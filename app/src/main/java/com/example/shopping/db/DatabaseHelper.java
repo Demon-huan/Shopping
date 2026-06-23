@@ -247,6 +247,27 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return items;
     }
 
+    public CartItem getCartItemByProductId(int userId, int productId) {
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor cursor = db.query(TABLE_CART, null,
+                COL_USER_ID_FK + "=? AND " + COL_PRODUCT_ID_FK + "=?",
+                new String[]{String.valueOf(userId), String.valueOf(productId)},
+                null, null, null);
+        CartItem item = null;
+        if (cursor.moveToFirst()) {
+            item = new CartItem();
+            item.setId(cursor.getInt(cursor.getColumnIndexOrThrow(COL_CART_ID)));
+            item.setUserId(cursor.getInt(cursor.getColumnIndexOrThrow(COL_USER_ID_FK)));
+            item.setProductId(cursor.getInt(cursor.getColumnIndexOrThrow(COL_PRODUCT_ID_FK)));
+            item.setName(cursor.getString(cursor.getColumnIndexOrThrow(COL_NAME)));
+            item.setPrice(cursor.getDouble(cursor.getColumnIndexOrThrow(COL_PRICE)));
+            item.setQuantity(cursor.getInt(cursor.getColumnIndexOrThrow(COL_QUANTITY)));
+            item.setImageUrl(cursor.getString(cursor.getColumnIndexOrThrow(COL_IMAGE_URL)));
+        }
+        cursor.close();
+        return item;
+    }
+
     public void updateCartItemQuantity(int id, int quantity) {
         SQLiteDatabase db = getWritableDatabase();
         ContentValues values = new ContentValues();

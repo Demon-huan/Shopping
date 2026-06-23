@@ -11,6 +11,7 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.bumptech.glide.Glide;
 import com.example.shopping.R;
 import com.example.shopping.db.DatabaseHelper;
 import com.example.shopping.model.CartItem;
@@ -18,6 +19,7 @@ import com.example.shopping.model.Product;
 import com.example.shopping.network.ApiConfig;
 import com.example.shopping.network.ApiContract;
 import com.example.shopping.network.HttpUtils;
+import com.example.shopping.util.NetworkUtil;
 import com.example.shopping.util.SessionManager;
 import com.google.android.material.button.MaterialButton;
 
@@ -92,6 +94,10 @@ public class ProductDetailActivity extends AppCompatActivity {
     private void loadProductDetail() {
         new Thread(() -> {
             try {
+                // 无网络时直接跳过，走 SQLite 回退
+                if (!NetworkUtil.isNetworkAvailable(ProductDetailActivity.this)) {
+                    throw new Exception("无网络连接");
+                }
                 String response = HttpUtils.doGet(ApiConfig.BASE_URL + ApiContract.PRODUCTS + "/" + productId);
                 JSONObject data;
 
@@ -142,6 +148,10 @@ public class ProductDetailActivity extends AppCompatActivity {
         tvCategory.setText(product.getCategory());
         tvPrice.setText("¥" + String.format("%.2f", product.getPrice()));
         tvDescription.setText(product.getDescription());
+        Glide.with(this)
+                .load(product.getImageUrl())
+                .placeholder(R.drawable.ic_product_placeholder)
+                .into(ivImage);
     }
 
     private void addToCart() {
@@ -152,36 +162,45 @@ public class ProductDetailActivity extends AppCompatActivity {
 
         new Thread(() -> {
             try {
-                CartItem item = new CartItem(
-                        userId,
-                        currentProduct.getId(),
-                        currentProduct.getName(),
-                        currentProduct.getPrice(),
-                        1,
-                        currentProduct.getImageUrl()
-                );
+                // 查重：同一用户同一商品是否已在购物车中
+                CartItem existing = dbHelper.getCartItemByProductId(userId, currentProduct.getId());
 
-                // 存入本地数据库
-                long result = dbHelper.insertCartItem(item);
+                if (existing != null) {
+                    // 已有该商品，数量+1
+                    dbHelper.updateCartItemQuantity(existing.getId(), existing.getQuantity() + 1);
+                    runOnUiThread(() ->
+                            Toast.makeText(ProductDetailActivity.this, "已更新购物车数量", Toast.LENGTH_SHORT).show());
+                } else {
+                    // 新商品，插入购物车
+                    CartItem item = new CartItem(
+                            userId,
+                            currentProduct.getId(),
+                            currentProduct.getName(),
+                            currentProduct.getPrice(),
+                            1,
+                            currentProduct.getImageUrl()
+                    );
+                    long result = dbHelper.insertCartItem(item);
 
-                // 尝试同步到服务器（可选）
-                try {
-                    JSONObject body = new JSONObject();
-                    body.put(ApiContract.KEY_USER_ID, userId);
-                    body.put(ApiContract.KEY_PRODUCT_ID, currentProduct.getId());
-                    body.put(ApiContract.KEY_QUANTITY, 1);
-                    HttpUtils.doPost(ApiConfig.BASE_URL + ApiContract.CART, body.toString());
-                } catch (Exception ignored) {
-                    // 服务器不可用，本地已保存即可
-                }
-
-                runOnUiThread(() -> {
-                    if (result != -1) {
-                        Toast.makeText(ProductDetailActivity.this, "已加入购物车", Toast.LENGTH_SHORT).show();
-                    } else {
-                        Toast.makeText(ProductDetailActivity.this, "加入购物车失败", Toast.LENGTH_SHORT).show();
+                    // 尝试同步到服务器（可选）
+                    try {
+                        JSONObject body = new JSONObject();
+                        body.put(ApiContract.KEY_USER_ID, userId);
+                        body.put(ApiContract.KEY_PRODUCT_ID, currentProduct.getId());
+                        body.put(ApiContract.KEY_QUANTITY, 1);
+                        HttpUtils.doPost(ApiConfig.BASE_URL + ApiContract.CART, body.toString());
+                    } catch (Exception ignored) {
                     }
-                });
+
+                    long finalResult = result;
+                    runOnUiThread(() -> {
+                        if (finalResult != -1) {
+                            Toast.makeText(ProductDetailActivity.this, "已加入购物车", Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(ProductDetailActivity.this, "加入购物车失败", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                }
 
             } catch (Exception e) {
                 runOnUiThread(() -> {

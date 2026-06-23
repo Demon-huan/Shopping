@@ -18,14 +18,15 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
 import com.example.shopping.R;
 import com.example.shopping.db.DatabaseHelper;
 import com.example.shopping.model.Product;
 import com.example.shopping.network.ApiConfig;
 import com.example.shopping.network.ApiContract;
 import com.example.shopping.network.HttpUtils;
+import com.example.shopping.util.NetworkUtil;
 import com.example.shopping.util.SessionManager;
-import com.google.android.material.progressindicator.LinearProgressIndicator;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -39,7 +40,7 @@ public class ProductListActivity extends AppCompatActivity {
     private static final int MSG_FAIL = 2;
 
     private RecyclerView recyclerView;
-    private LinearProgressIndicator progressBar;
+    private View loadingOverlay;
     private ProductAdapter adapter;
     private List<Product> productList = new ArrayList<>();
 
@@ -50,7 +51,7 @@ public class ProductListActivity extends AppCompatActivity {
     private final Handler handler = new Handler(Looper.getMainLooper()) {
         @Override
         public void handleMessage(Message msg) {
-            progressBar.setVisibility(View.GONE);
+            hideLoading();
 
             if (msg.what == MSG_SUCCESS) {
                 adapter.setProducts(productList);
@@ -73,7 +74,7 @@ public class ProductListActivity extends AppCompatActivity {
         userId = sessionManager.getUserId();
 
         recyclerView = findViewById(R.id.recycler_products);
-        progressBar = findViewById(R.id.progress_products);
+        loadingOverlay = findViewById(R.id.loading_overlay);
 
         adapter = new ProductAdapter(productList, product -> {
             Intent intent = new Intent(ProductListActivity.this, ProductDetailActivity.class);
@@ -87,13 +88,29 @@ public class ProductListActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
 
         // 加载商品数据
-        progressBar.setVisibility(View.VISIBLE);
+        showLoading();
         loadProducts();
+    }
+
+    private void showLoading() {
+        loadingOverlay.setAlpha(0f);
+        loadingOverlay.setVisibility(View.VISIBLE);
+        loadingOverlay.animate().alpha(1f).setDuration(300).start();
+    }
+
+    private void hideLoading() {
+        if (loadingOverlay.getVisibility() != View.VISIBLE) return;
+        loadingOverlay.animate().alpha(0f).setDuration(300)
+                .withEndAction(() -> loadingOverlay.setVisibility(View.GONE)).start();
     }
 
     private void loadProducts() {
         new Thread(() -> {
             try {
+                // 无网络时直接跳过，走 SQLite 回退
+                if (!NetworkUtil.isNetworkAvailable(ProductListActivity.this)) {
+                    throw new Exception("无网络连接");
+                }
                 // 尝试网络获取
                 String response = HttpUtils.doGet(ApiConfig.BASE_URL + ApiContract.PRODUCTS);
                 List<Product> fetched = new ArrayList<>();
@@ -217,6 +234,10 @@ public class ProductListActivity extends AppCompatActivity {
             holder.tvName.setText(product.getName());
             holder.tvCategory.setText(product.getCategory());
             holder.tvPrice.setText("¥" + String.format("%.2f", product.getPrice()));
+            Glide.with(holder.itemView.getContext())
+                    .load(product.getImageUrl())
+                    .placeholder(R.drawable.ic_product_placeholder)
+                    .into(holder.ivProduct);
             holder.itemView.setOnClickListener(v -> listener.onProductClick(product));
         }
 

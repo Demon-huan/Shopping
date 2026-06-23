@@ -19,6 +19,7 @@ import com.example.shopping.model.User;
 import com.example.shopping.network.ApiConfig;
 import com.example.shopping.network.ApiContract;
 import com.example.shopping.network.HttpUtils;
+import com.example.shopping.util.NetworkUtil;
 import com.example.shopping.util.SessionManager;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
@@ -92,6 +93,10 @@ public class LoginActivity extends AppCompatActivity {
     private void performLogin(String username, String password) {
         new Thread(() -> {
             try {
+                // 无网络时直接跳过，走 SQLite 回退
+                if (!NetworkUtil.isNetworkAvailable(LoginActivity.this)) {
+                    throw new Exception("无网络连接");
+                }
                 // 通过 MockAPI 查用户：GET /users?username=xxx
                 String response = HttpUtils.doGet(ApiConfig.BASE_URL + ApiContract.LOGIN
                         + "?" + ApiContract.KEY_USERNAME + "=" + username);

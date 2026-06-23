@@ -15,6 +15,7 @@ import com.example.shopping.model.User;
 import com.example.shopping.network.ApiConfig;
 import com.example.shopping.network.ApiContract;
 import com.example.shopping.network.HttpUtils;
+import com.example.shopping.util.NetworkUtil;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.google.android.material.textfield.TextInputEditText;
@@ -94,6 +95,10 @@ public class RegisterActivity extends AppCompatActivity {
     private void performRegister(String username, String password, String email) {
         new Thread(() -> {
             try {
+                // 无网络时直接跳过，走 SQLite 回退
+                if (!NetworkUtil.isNetworkAvailable(RegisterActivity.this)) {
+                    throw new Exception("无网络连接");
+                }
                 // 先查重：GET /users?username=xxx
                 String checkResp = HttpUtils.doGet(ApiConfig.BASE_URL + ApiContract.REGISTER
                         + "?" + ApiContract.KEY_USERNAME + "=" + username);
