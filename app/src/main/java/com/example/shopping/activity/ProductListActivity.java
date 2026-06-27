@@ -138,7 +138,8 @@ public class ProductListActivity extends AppCompatActivity {
                 }
                 productList = fetched;
             } catch (Exception e) {
-                // 网络不可用，从本地加载
+                android.util.Log.e("ProductListActivity", "加载MockAPI商品失败", e);
+                // 网络不可用或请求失败，从本地加载
                 productList = dbHelper.getAllProducts();
             }
 
@@ -193,6 +194,13 @@ public class ProductListActivity extends AppCompatActivity {
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             startActivity(intent);
             finish();
+            return true;
+        }
+
+        if (id == R.id.action_orders) {
+            Intent intent = new Intent(this, OrderListActivity.class);
+            intent.putExtra("user_id", userId);
+            startActivity(intent);
             return true;
         }
 

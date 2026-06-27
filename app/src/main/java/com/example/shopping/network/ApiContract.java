@@ -2,8 +2,6 @@ package com.example.shopping.network;
 
 public class ApiContract {
     // 接口路径
-    public static final String LOGIN = "/users";
-    public static final String REGISTER = "/users";
     public static final String PRODUCTS = "/products";
     public static final String CART = "/cart";
 
@@ -31,6 +29,13 @@ public class ApiContract {
     // 购物车相关 key
     public static final String KEY_PRODUCT_ID = "product_id";
     public static final String KEY_QUANTITY = "quantity";
+
+    // 订单相关
+    public static final String ORDERS = "/orders";
+    public static final String KEY_ORDER_USER_ID = "userId";
+    public static final String KEY_TOTAL_PRICE = "totalPrice";
+    public static final String KEY_CREATED_AT = "createdAt";
+    public static final String KEY_STATUS = "status";
 
     // 错误码
     public static final int CODE_SUCCESS = 200;

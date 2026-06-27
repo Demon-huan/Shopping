@@ -50,6 +50,15 @@
         android:padding="16dp"
         android:gravity="center_vertical">
 
+        <CheckBox
+            android:id="@+id/cb_select_all"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="全选"
+            android:textSize="14sp"
+            android:buttonTint="?attr/colorPrimary"
+            android:layout_marginEnd="12dp" />
+
         <TextView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -76,6 +85,14 @@
             android:text="清空"
             app:cornerRadius="8dp"
             style="@style/Widget.Material3.Button.TonalButton" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_purchase"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:text="购买"
+            android:layout_marginStart="8dp"
+            app:cornerRadius="8dp" />
 
     </LinearLayout>
 

@@ -9,8 +9,15 @@
         app:showAsAction="always" />
 
     <item
+        android:id="@+id/action_orders"
+        android:icon="@drawable/ic_order"
+        android:title="我的订单"
+        app:showAsAction="always" />
+
+    <item
         android:id="@+id/action_logout"
+        android:icon="@drawable/ic_logout"
         android:title="注销"
-        app:showAsAction="never" />
+        app:showAsAction="always" />
 
 </menu>

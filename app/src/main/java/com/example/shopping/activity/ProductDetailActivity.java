@@ -61,6 +61,10 @@ public class ProductDetailActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_product_detail);
 
+        com.google.android.material.appbar.MaterialToolbar toolbar = findViewById(R.id.toolbar_detail);
+        setSupportActionBar(toolbar);
+        toolbar.setNavigationOnClickListener(v -> finish());
+
         dbHelper = new DatabaseHelper(this);
         sessionManager = new SessionManager(this);
         userId = sessionManager.getUserId();

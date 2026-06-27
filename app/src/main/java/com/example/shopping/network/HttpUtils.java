@@ -9,8 +9,8 @@ import java.net.URL;
 
 public class HttpUtils {
 
-    private static final int CONNECT_TIMEOUT = 5000;
-    private static final int READ_TIMEOUT = 5000;
+    private static final int CONNECT_TIMEOUT = 15000;
+    private static final int READ_TIMEOUT = 15000;
 
     public static String doGet(String urlStr) throws Exception {
         HttpURLConnection conn = null;

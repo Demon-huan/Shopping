@@ -7,6 +7,9 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
 import com.example.shopping.model.CartItem;
+import com.example.shopping.model.Order;
+import com.example.shopping.model.OrderItem;
+import com.example.shopping.model.PendingOrder;
 import com.example.shopping.model.Product;
 import com.example.shopping.model.User;
 
@@ -16,12 +19,21 @@ import java.util.List;
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "shopping.db";
-    private static final int DATABASE_VERSION = 1;
+    private static final int DATABASE_VERSION = 3;
 
     // 表名
     private static final String TABLE_USERS = "users";
     private static final String TABLE_PRODUCTS = "products";
     private static final String TABLE_CART = "cart";
+    private static final String TABLE_ORDERS = "orders";
+    private static final String TABLE_ORDER_ITEMS = "order_items";
+    private static final String TABLE_PENDING_ORDERS = "pending_orders";
+
+    // pending_orders 列
+    private static final String COL_PENDING_ID = "id";
+    private static final String COL_PENDING_USER_ID = "user_id";
+    private static final String COL_PENDING_ORDER_JSON = "order_json";
+    private static final String COL_PENDING_CREATED_AT = "created_at";
 
     // users 列
     private static final String COL_USER_ID = "id";
@@ -44,6 +56,18 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String COL_USER_ID_FK = "user_id";
     private static final String COL_PRODUCT_ID_FK = "product_id";
     private static final String COL_QUANTITY = "quantity";
+
+    // orders 列
+    private static final String COL_ORDER_ID = "id";
+    private static final String COL_ORDER_USER_ID = "user_id";
+    private static final String COL_TOTAL_PRICE = "total_price";
+    private static final String COL_STATUS = "status";
+    private static final String COL_ORDER_CREATED_AT = "created_at";
+
+    // order_items 列
+    private static final String COL_ORDER_ITEM_ID = "id";
+    private static final String COL_ORDER_ID_FK = "order_id";
+    private static final String COL_ORDER_PRODUCT_ID = "product_id";
 
     public DatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -81,15 +105,53 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 + "FOREIGN KEY (" + COL_PRODUCT_ID_FK + ") REFERENCES " + TABLE_PRODUCTS + "(" + COL_PRODUCT_ID + ")"
                 + ")");
 
+        db.execSQL("CREATE TABLE IF NOT EXISTS " + TABLE_ORDERS + " ("
+                + COL_ORDER_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
+                + COL_ORDER_USER_ID + " INTEGER NOT NULL, "
+                + COL_TOTAL_PRICE + " REAL NOT NULL, "
+                + COL_STATUS + " TEXT DEFAULT '已下单', "
+                + COL_ORDER_CREATED_AT + " TEXT DEFAULT (datetime('now')), "
+                + "FOREIGN KEY (" + COL_ORDER_USER_ID + ") REFERENCES " + TABLE_USERS + "(" + COL_USER_ID + ")"
+                + ")");
+
+        db.execSQL("CREATE TABLE IF NOT EXISTS " + TABLE_ORDER_ITEMS + " ("
+                + COL_ORDER_ITEM_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
+                + COL_ORDER_ID_FK + " INTEGER NOT NULL, "
+                + COL_ORDER_PRODUCT_ID + " INTEGER NOT NULL, "
+                + COL_NAME + " TEXT NOT NULL, "
+                + COL_PRICE + " REAL NOT NULL, "
+                + COL_QUANTITY + " INTEGER NOT NULL DEFAULT 1, "
+                + "FOREIGN KEY (" + COL_ORDER_ID_FK + ") REFERENCES " + TABLE_ORDERS + "(" + COL_ORDER_ID + ")"
+                + ")");
+
+        db.execSQL("CREATE TABLE IF NOT EXISTS " + TABLE_PENDING_ORDERS + " ("
+                + COL_PENDING_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
+                + COL_PENDING_USER_ID + " INTEGER NOT NULL, "
+                + COL_PENDING_ORDER_JSON + " TEXT NOT NULL, "
+                + COL_PENDING_CREATED_AT + " TEXT DEFAULT (datetime('now'))"
+                + ")");
+
         prepopulateProducts(db);
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_CART);
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_PRODUCTS);
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_USERS);
-        onCreate(db);
+        if (oldVersion < 3) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS " + TABLE_PENDING_ORDERS + " ("
+                    + COL_PENDING_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
+                    + COL_PENDING_USER_ID + " INTEGER NOT NULL, "
+                    + COL_PENDING_ORDER_JSON + " TEXT NOT NULL, "
+                    + COL_PENDING_CREATED_AT + " TEXT DEFAULT (datetime('now'))"
+                    + ")");
+        }
+        if (oldVersion < 2) {
+            db.execSQL("DROP TABLE IF EXISTS " + TABLE_ORDER_ITEMS);
+            db.execSQL("DROP TABLE IF EXISTS " + TABLE_ORDERS);
+            db.execSQL("DROP TABLE IF EXISTS " + TABLE_CART);
+            db.execSQL("DROP TABLE IF EXISTS " + TABLE_PRODUCTS);
+            db.execSQL("DROP TABLE IF EXISTS " + TABLE_USERS);
+            onCreate(db);
+        }
     }
 
     private void prepopulateProducts(SQLiteDatabase db) {
@@ -283,5 +345,173 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public void clearCart(int userId) {
         SQLiteDatabase db = getWritableDatabase();
         db.delete(TABLE_CART, COL_USER_ID_FK + "=?", new String[]{String.valueOf(userId)});
+    }
+
+    // ========== 订单操作 ==========
+
+    public long createOrder(int userId, double totalPrice, List<CartItem> cartItems) {
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            // 插入订单
+            ContentValues orderValues = new ContentValues();
+            orderValues.put(COL_ORDER_USER_ID, userId);
+            orderValues.put(COL_TOTAL_PRICE, totalPrice);
+            orderValues.put(COL_STATUS, "已下单");
+            long orderId = db.insert(TABLE_ORDERS, null, orderValues);
+
+            // 插入订单项
+            for (CartItem item : cartItems) {
+                ContentValues itemValues = new ContentValues();
+                itemValues.put(COL_ORDER_ID_FK, orderId);
+                itemValues.put(COL_ORDER_PRODUCT_ID, item.getProductId());
+                itemValues.put(COL_NAME, item.getName());
+                itemValues.put(COL_PRICE, item.getPrice());
+                itemValues.put(COL_QUANTITY, item.getQuantity());
+                db.insert(TABLE_ORDER_ITEMS, null, itemValues);
+            }
+
+            // 清空购物车
+            db.delete(TABLE_CART, COL_USER_ID_FK + "=?", new String[]{String.valueOf(userId)});
+
+            db.setTransactionSuccessful();
+            return orderId;
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    public long createOrderOnly(int userId, double totalPrice, List<CartItem> cartItems, String createdAt) {
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            ContentValues orderValues = new ContentValues();
+            orderValues.put(COL_ORDER_USER_ID, userId);
+            orderValues.put(COL_TOTAL_PRICE, totalPrice);
+            orderValues.put(COL_STATUS, "已下单");
+            if (createdAt != null) {
+                orderValues.put(COL_ORDER_CREATED_AT, createdAt);
+            }
+            long orderId = db.insert(TABLE_ORDERS, null, orderValues);
+
+            for (CartItem item : cartItems) {
+                ContentValues itemValues = new ContentValues();
+                itemValues.put(COL_ORDER_ID_FK, orderId);
+                itemValues.put(COL_ORDER_PRODUCT_ID, item.getProductId());
+                itemValues.put(COL_NAME, item.getName());
+                itemValues.put(COL_PRICE, item.getPrice());
+                itemValues.put(COL_QUANTITY, item.getQuantity());
+                db.insert(TABLE_ORDER_ITEMS, null, itemValues);
+            }
+
+            db.setTransactionSuccessful();
+            return orderId;
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    public long insertPendingOrder(int userId, String orderJson) {
+        SQLiteDatabase db = getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(COL_PENDING_USER_ID, userId);
+        values.put(COL_PENDING_ORDER_JSON, orderJson);
+        return db.insert(TABLE_PENDING_ORDERS, null, values);
+    }
+
+    public List<PendingOrder> getAllPendingOrders() {
+        List<PendingOrder> pendingOrders = new ArrayList<>();
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor cursor = db.query(TABLE_PENDING_ORDERS, null,
+                null, null, null, null, COL_PENDING_ID + " ASC");
+        while (cursor.moveToNext()) {
+            PendingOrder po = new PendingOrder();
+            po.setId(cursor.getInt(cursor.getColumnIndexOrThrow(COL_PENDING_ID)));
+            po.setUserId(cursor.getInt(cursor.getColumnIndexOrThrow(COL_PENDING_USER_ID)));
+            po.setOrderJson(cursor.getString(cursor.getColumnIndexOrThrow(COL_PENDING_ORDER_JSON)));
+            po.setCreatedAt(cursor.getString(cursor.getColumnIndexOrThrow(COL_PENDING_CREATED_AT)));
+            pendingOrders.add(po);
+        }
+        cursor.close();
+        return pendingOrders;
+    }
+
+    public void deletePendingOrder(int pendingOrderId) {
+        SQLiteDatabase db = getWritableDatabase();
+        db.delete(TABLE_PENDING_ORDERS,
+                COL_PENDING_ID + "=?",
+                new String[]{String.valueOf(pendingOrderId)});
+    }
+
+    public void deleteOrder(int orderId) {
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            db.delete(TABLE_ORDER_ITEMS, COL_ORDER_ID_FK + "=?", new String[]{String.valueOf(orderId)});
+            db.delete(TABLE_ORDERS, COL_ORDER_ID + "=?", new String[]{String.valueOf(orderId)});
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    public List<Order> getOrdersByUserId(int userId) {
+        List<Order> orders = new ArrayList<>();
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor cursor = db.query(TABLE_ORDERS, null,
+                COL_ORDER_USER_ID + "=?",
+                new String[]{String.valueOf(userId)},
+                null, null, COL_ORDER_ID + " DESC");
+        while (cursor.moveToNext()) {
+            Order order = new Order();
+            order.setId(cursor.getInt(cursor.getColumnIndexOrThrow(COL_ORDER_ID)));
+            order.setUserId(cursor.getInt(cursor.getColumnIndexOrThrow(COL_ORDER_USER_ID)));
+            order.setTotalPrice(cursor.getDouble(cursor.getColumnIndexOrThrow(COL_TOTAL_PRICE)));
+            order.setStatus(cursor.getString(cursor.getColumnIndexOrThrow(COL_STATUS)));
+            order.setCreatedAt(cursor.getString(cursor.getColumnIndexOrThrow(COL_ORDER_CREATED_AT)));
+            orders.add(order);
+        }
+        cursor.close();
+        return orders;
+    }
+
+    public Order getOrderById(int orderId) {
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor cursor = db.query(TABLE_ORDERS, null,
+                COL_ORDER_ID + "=?",
+                new String[]{String.valueOf(orderId)},
+                null, null, null);
+        Order order = null;
+        if (cursor.moveToFirst()) {
+            order = new Order();
+            order.setId(cursor.getInt(cursor.getColumnIndexOrThrow(COL_ORDER_ID)));
+            order.setUserId(cursor.getInt(cursor.getColumnIndexOrThrow(COL_ORDER_USER_ID)));
+            order.setTotalPrice(cursor.getDouble(cursor.getColumnIndexOrThrow(COL_TOTAL_PRICE)));
+            order.setStatus(cursor.getString(cursor.getColumnIndexOrThrow(COL_STATUS)));
+            order.setCreatedAt(cursor.getString(cursor.getColumnIndexOrThrow(COL_ORDER_CREATED_AT)));
+        }
+        cursor.close();
+        return order;
+    }
+
+    public List<OrderItem> getOrderItemsByOrderId(int orderId) {
+        List<OrderItem> items = new ArrayList<>();
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor cursor = db.query(TABLE_ORDER_ITEMS, null,
+                COL_ORDER_ID_FK + "=?",
+                new String[]{String.valueOf(orderId)},
+                null, null, COL_ORDER_ITEM_ID + " ASC");
+        while (cursor.moveToNext()) {
+            OrderItem item = new OrderItem();
+            item.setId(cursor.getInt(cursor.getColumnIndexOrThrow(COL_ORDER_ITEM_ID)));
+            item.setOrderId(cursor.getInt(cursor.getColumnIndexOrThrow(COL_ORDER_ID_FK)));
+            item.setProductId(cursor.getInt(cursor.getColumnIndexOrThrow(COL_ORDER_PRODUCT_ID)));
+            item.setName(cursor.getString(cursor.getColumnIndexOrThrow(COL_NAME)));
+            item.setPrice(cursor.getDouble(cursor.getColumnIndexOrThrow(COL_PRICE)));
+            item.setQuantity(cursor.getInt(cursor.getColumnIndexOrThrow(COL_QUANTITY)));
+            items.add(item);
+        }
+        cursor.close();
+        return items;
     }
 }
