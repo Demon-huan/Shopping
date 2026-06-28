@@ -2,6 +2,7 @@ package com.example.shopping.activity;
 
 import android.os.Bundle;
 import android.view.View;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -12,7 +13,6 @@ import com.example.shopping.model.User;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.google.android.material.textfield.TextInputEditText;
-import com.google.android.material.textview.MaterialTextView;
 
 public class RegisterActivity extends AppCompatActivity {
 
@@ -21,11 +21,12 @@ public class RegisterActivity extends AppCompatActivity {
     private TextInputEditText etConfirmPassword;
     private TextInputEditText etEmail;
     private MaterialButton btnRegister;
-    private MaterialTextView tvGoLogin;
+    private TextView tvGoLogin;
     private LinearProgressIndicator progressBar;
 
     private DatabaseHelper dbHelper;
 
+    // 初始化界面，绑定注册按钮和登录跳转
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -64,6 +65,7 @@ public class RegisterActivity extends AppCompatActivity {
         tvGoLogin.setOnClickListener(v -> finish());
     }
 
+    // 后台检查用户名是否重复，不重复则插入新用户
     private void performRegister(String username, String password, String email) {
         new Thread(() -> {
             if (dbHelper.queryUserByUsername(username) != null) {

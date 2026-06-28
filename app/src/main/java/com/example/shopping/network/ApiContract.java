@@ -1,23 +1,18 @@
 package com.example.shopping.network;
 
+// MockAPI 接口字段名，和远端schema保持一致
 public class ApiContract {
+
     // 接口路径
     public static final String PRODUCTS = "/products";
     public static final String CART = "/cart";
 
-    // 通用 JSON key
+    // 通用
     public static final String KEY_CODE = "code";
-    public static final String KEY_MSG = "msg";
     public static final String KEY_DATA = "data";
-
-    // 用户相关 key
     public static final String KEY_USER_ID = "user_id";
-    public static final String KEY_USERNAME = "username";
-    public static final String KEY_PASSWORD = "password";
-    public static final String KEY_EMAIL = "email";
-    public static final String KEY_TOKEN = "token";
 
-    // 商品相关 key
+    // 商品相关
     public static final String KEY_ID = "id";
     public static final String KEY_NAME = "name";
     public static final String KEY_DESCRIPTION = "description";
@@ -26,7 +21,7 @@ public class ApiContract {
     public static final String KEY_CATEGORY = "category";
     public static final String KEY_STOCK = "stock";
 
-    // 购物车相关 key
+    // 购物车
     public static final String KEY_PRODUCT_ID = "product_id";
     public static final String KEY_QUANTITY = "quantity";
 
@@ -36,7 +31,4 @@ public class ApiContract {
     public static final String KEY_TOTAL_PRICE = "totalPrice";
     public static final String KEY_CREATED_AT = "createdAt";
     public static final String KEY_STATUS = "status";
-
-    // 错误码
-    public static final int CODE_SUCCESS = 200;
 }

@@ -42,6 +42,7 @@ public class OrderDetailActivity extends AppCompatActivity {
     private List<OrderItem> orderItems = new ArrayList<>();
     private OrderItemAdapter adapter;
 
+    // 加载完成后填充订单头信息和商品明细
     private final Handler handler = new Handler(Looper.getMainLooper()) {
         @Override
         public void handleMessage(Message msg) {
@@ -57,6 +58,7 @@ public class OrderDetailActivity extends AppCompatActivity {
         }
     };
 
+    // 初始化界面，接收订单总价和时间参数，加载订单明细
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -83,6 +85,7 @@ public class OrderDetailActivity extends AppCompatActivity {
         loadOrderDetail();
     }
 
+    // 从MockAPI拉取该订单的商品明细，离线则读本地
     private void loadOrderDetail() {
         new Thread(() -> {
             try {

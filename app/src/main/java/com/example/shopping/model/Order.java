@@ -9,12 +9,6 @@ public class Order {
 
     public Order() {}
 
-    public Order(int userId, double totalPrice) {
-        this.userId = userId;
-        this.totalPrice = totalPrice;
-        this.status = "已下单";
-    }
-
     public int getId() { return id; }
     public void setId(int id) { this.id = id; }
 

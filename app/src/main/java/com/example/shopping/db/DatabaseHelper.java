@@ -73,6 +73,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
     }
 
+    // 首次安装时创建6张表并填充默认商品
     @Override
     public void onCreate(SQLiteDatabase db) {
         db.execSQL("CREATE TABLE IF NOT EXISTS " + TABLE_USERS + " ("
@@ -134,6 +135,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         prepopulateProducts(db);
     }
 
+    // 数据库版本升级时，按版本号逐步迁移表结构
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         if (oldVersion < 3) {
@@ -154,6 +156,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
     }
 
+    // 写入10条默认商品数据（首次安装时调用）
     private void prepopulateProducts(SQLiteDatabase db) {
         insertProduct(db, 1, "Apple iPhone 15 128GB", "A16仿生芯片 | 4800万像素双摄 | 6.1英寸超视网膜显示屏 | USB-C接口", 5999.00, "https://via.placeholder.com/300.png?text=iPhone15", "电子产品", 50);
         insertProduct(db, 2, "MacBook Pro 14英寸 M3", "Apple M3芯片 | 8GB统一内存 | 512GB SSD | Liquid Retina XDR显示屏", 14999.00, "https://via.placeholder.com/300.png?text=MacBookPro", "电子产品", 30);
@@ -167,6 +170,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         insertProduct(db, 10, "小米空气净化器 4 Pro", "CADR值500m³/h | 适用面积60㎡ | OLED触控屏 | 米家APP智控", 1999.00, "https://via.placeholder.com/300.png?text=AirPurifier", "生活电器", 60);
     }
 
+    // 插入单条商品到products表
     private void insertProduct(SQLiteDatabase db, int id, String name, String desc, double price, String imageUrl, String category, int stock) {
         ContentValues values = new ContentValues();
         values.put(COL_PRODUCT_ID, id);
@@ -181,6 +185,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     // ========== 用户操作 ==========
 
+    // 插入新用户，返回-1表示失败
     public long insertUser(User user) {
         SQLiteDatabase db = getWritableDatabase();
         ContentValues values = new ContentValues();
@@ -190,6 +195,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return db.insert(TABLE_USERS, null, values);
     }
 
+    // 根据用户名查找用户，用于注册时查重
     public User queryUserByUsername(String username) {
         SQLiteDatabase db = getReadableDatabase();
         Cursor cursor = db.query(TABLE_USERS, null, COL_USERNAME + "=?", new String[]{username}, null, null, null);
@@ -206,6 +212,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return user;
     }
 
+    // 同时匹配用户名和密码，用于登录验证
     public User queryUserByUsernameAndPassword(String username, String password) {
         SQLiteDatabase db = getReadableDatabase();
         Cursor cursor = db.query(TABLE_USERS, null,
@@ -226,6 +233,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     // ========== 商品操作 ==========
 
+    // 查询所有商品，按ID升序排列
     public List<Product> getAllProducts() {
         List<Product> products = new ArrayList<>();
         SQLiteDatabase db = getReadableDatabase();
@@ -245,6 +253,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return products;
     }
 
+    // 根据商品ID查询单个商品
     public Product getProductById(int id) {
         SQLiteDatabase db = getReadableDatabase();
         Cursor cursor = db.query(TABLE_PRODUCTS, null, COL_PRODUCT_ID + "=?", new String[]{String.valueOf(id)}, null, null, null);
@@ -263,6 +272,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return p;
     }
 
+    // 插入或更新商品，ID相同时覆盖旧数据
     public void insertOrUpdateProduct(Product product) {
         SQLiteDatabase db = getWritableDatabase();
         ContentValues values = new ContentValues();
@@ -278,6 +288,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     // ========== 购物车操作 ==========
 
+    // 新增一条购物车记录
     public long insertCartItem(CartItem item) {
         SQLiteDatabase db = getWritableDatabase();
         ContentValues values = new ContentValues();
@@ -290,6 +301,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return db.insert(TABLE_CART, null, values);
     }
 
+    // 查询某个用户购物车里的所有商品
     public List<CartItem> getCartItemsByUserId(int userId) {
         List<CartItem> items = new ArrayList<>();
         SQLiteDatabase db = getReadableDatabase();
@@ -309,6 +321,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return items;
     }
 
+    // 根据用户ID和商品ID查购物车，用于加入购物车时判断是否已存在
     public CartItem getCartItemByProductId(int userId, int productId) {
         SQLiteDatabase db = getReadableDatabase();
         Cursor cursor = db.query(TABLE_CART, null,
@@ -330,6 +343,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return item;
     }
 
+    // 更新购物车中某个商品的数量
     public void updateCartItemQuantity(int id, int quantity) {
         SQLiteDatabase db = getWritableDatabase();
         ContentValues values = new ContentValues();
@@ -337,11 +351,13 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.update(TABLE_CART, values, COL_CART_ID + "=?", new String[]{String.valueOf(id)});
     }
 
+    // 删除购物车中的单个商品
     public int deleteCartItem(int id) {
         SQLiteDatabase db = getWritableDatabase();
         return db.delete(TABLE_CART, COL_CART_ID + "=?", new String[]{String.valueOf(id)});
     }
 
+    // 清空某个用户的全部购物车商品
     public void clearCart(int userId) {
         SQLiteDatabase db = getWritableDatabase();
         db.delete(TABLE_CART, COL_USER_ID_FK + "=?", new String[]{String.valueOf(userId)});
@@ -349,46 +365,15 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     // ========== 订单操作 ==========
 
-    public long createOrder(int userId, double totalPrice, List<CartItem> cartItems) {
-        SQLiteDatabase db = getWritableDatabase();
-        db.beginTransaction();
-        try {
-            // 插入订单
-            ContentValues orderValues = new ContentValues();
-            orderValues.put(COL_ORDER_USER_ID, userId);
-            orderValues.put(COL_TOTAL_PRICE, totalPrice);
-            orderValues.put(COL_STATUS, "已下单");
-            long orderId = db.insert(TABLE_ORDERS, null, orderValues);
-
-            // 插入订单项
-            for (CartItem item : cartItems) {
-                ContentValues itemValues = new ContentValues();
-                itemValues.put(COL_ORDER_ID_FK, orderId);
-                itemValues.put(COL_ORDER_PRODUCT_ID, item.getProductId());
-                itemValues.put(COL_NAME, item.getName());
-                itemValues.put(COL_PRICE, item.getPrice());
-                itemValues.put(COL_QUANTITY, item.getQuantity());
-                db.insert(TABLE_ORDER_ITEMS, null, itemValues);
-            }
-
-            // 清空购物车
-            db.delete(TABLE_CART, COL_USER_ID_FK + "=?", new String[]{String.valueOf(userId)});
-
-            db.setTransactionSuccessful();
-            return orderId;
-        } finally {
-            db.endTransaction();
-        }
-    }
-
-    public long createOrderOnly(int userId, double totalPrice, List<CartItem> cartItems, String createdAt) {
+    // 创建本地订单，不清空购物车
+    public long createOrderOnly(int userId, double totalPrice, List<CartItem> cartItems, String createdAt, String status) {
         SQLiteDatabase db = getWritableDatabase();
         db.beginTransaction();
         try {
             ContentValues orderValues = new ContentValues();
             orderValues.put(COL_ORDER_USER_ID, userId);
             orderValues.put(COL_TOTAL_PRICE, totalPrice);
-            orderValues.put(COL_STATUS, "已下单");
+            orderValues.put(COL_STATUS, status != null ? status : "已下单");
             if (createdAt != null) {
                 orderValues.put(COL_ORDER_CREATED_AT, createdAt);
             }
@@ -411,6 +396,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
     }
 
+    // 缓存一条未同步成功的订单JSON
     public long insertPendingOrder(int userId, String orderJson) {
         SQLiteDatabase db = getWritableDatabase();
         ContentValues values = new ContentValues();
@@ -419,6 +405,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return db.insert(TABLE_PENDING_ORDERS, null, values);
     }
 
+    // 查询所有待同步的订单
     public List<PendingOrder> getAllPendingOrders() {
         List<PendingOrder> pendingOrders = new ArrayList<>();
         SQLiteDatabase db = getReadableDatabase();
@@ -436,6 +423,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return pendingOrders;
     }
 
+    // 同步成功后删除对应的待处理记录
     public void deletePendingOrder(int pendingOrderId) {
         SQLiteDatabase db = getWritableDatabase();
         db.delete(TABLE_PENDING_ORDERS,
@@ -443,6 +431,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 new String[]{String.valueOf(pendingOrderId)});
     }
 
+    // 删除订单及其所有子项，事务保证一致性
     public void deleteOrder(int orderId) {
         SQLiteDatabase db = getWritableDatabase();
         db.beginTransaction();
@@ -455,6 +444,48 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
     }
 
+    // 同步成功后把"待同步"改成"已下单"
+    public void updateOrderStatus(int orderId, String status) {
+        SQLiteDatabase db = getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(COL_STATUS, status);
+        db.update(TABLE_ORDERS, values, COL_ORDER_ID + "=?", new String[]{String.valueOf(orderId)});
+    }
+
+    // 用远端数据覆盖本地，保证两边一致
+    public void syncOrdersFromRemote(int userId, List<Order> remoteOrders) {
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            // 先清掉旧的本地订单
+            Cursor cursor = db.query(TABLE_ORDERS, new String[]{COL_ORDER_ID},
+                    COL_ORDER_USER_ID + "=?", new String[]{String.valueOf(userId)},
+                    null, null, null);
+            while (cursor.moveToNext()) {
+                int orderId = cursor.getInt(0);
+                db.delete(TABLE_ORDER_ITEMS, COL_ORDER_ID_FK + "=?", new String[]{String.valueOf(orderId)});
+            }
+            cursor.close();
+            db.delete(TABLE_ORDERS, COL_ORDER_USER_ID + "=?", new String[]{String.valueOf(userId)});
+
+            // 批量写入远端订单，ID沿用MockAPI的
+            for (Order order : remoteOrders) {
+                ContentValues values = new ContentValues();
+                values.put(COL_ORDER_ID, order.getId());
+                values.put(COL_ORDER_USER_ID, order.getUserId());
+                values.put(COL_TOTAL_PRICE, order.getTotalPrice());
+                values.put(COL_STATUS, order.getStatus());
+                values.put(COL_ORDER_CREATED_AT, order.getCreatedAt());
+                db.insert(TABLE_ORDERS, null, values);
+            }
+
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    // 查询某个用户的所有订单，按ID倒序
     public List<Order> getOrdersByUserId(int userId) {
         List<Order> orders = new ArrayList<>();
         SQLiteDatabase db = getReadableDatabase();
@@ -475,25 +506,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return orders;
     }
 
-    public Order getOrderById(int orderId) {
-        SQLiteDatabase db = getReadableDatabase();
-        Cursor cursor = db.query(TABLE_ORDERS, null,
-                COL_ORDER_ID + "=?",
-                new String[]{String.valueOf(orderId)},
-                null, null, null);
-        Order order = null;
-        if (cursor.moveToFirst()) {
-            order = new Order();
-            order.setId(cursor.getInt(cursor.getColumnIndexOrThrow(COL_ORDER_ID)));
-            order.setUserId(cursor.getInt(cursor.getColumnIndexOrThrow(COL_ORDER_USER_ID)));
-            order.setTotalPrice(cursor.getDouble(cursor.getColumnIndexOrThrow(COL_TOTAL_PRICE)));
-            order.setStatus(cursor.getString(cursor.getColumnIndexOrThrow(COL_STATUS)));
-            order.setCreatedAt(cursor.getString(cursor.getColumnIndexOrThrow(COL_ORDER_CREATED_AT)));
-        }
-        cursor.close();
-        return order;
-    }
-
+    // 查询某个订单下的所有商品明细
     public List<OrderItem> getOrderItemsByOrderId(int orderId) {
         List<OrderItem> items = new ArrayList<>();
         SQLiteDatabase db = getReadableDatabase();

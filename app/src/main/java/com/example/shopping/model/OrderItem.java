@@ -10,14 +10,6 @@ public class OrderItem {
 
     public OrderItem() {}
 
-    public OrderItem(int orderId, int productId, String name, double price, int quantity) {
-        this.orderId = orderId;
-        this.productId = productId;
-        this.name = name;
-        this.price = price;
-        this.quantity = quantity;
-    }
-
     public int getId() { return id; }
     public void setId(int id) { this.id = id; }
 

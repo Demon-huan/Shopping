@@ -40,6 +40,7 @@ public class ProductDetailActivity extends AppCompatActivity {
     private int productId;
     private Product currentProduct;
 
+    // 处理后台结果，显示商品或提示失败
     private final Handler handler = new Handler(Looper.getMainLooper()) {
         @Override
         public void handleMessage(Message msg) {
@@ -56,6 +57,7 @@ public class ProductDetailActivity extends AppCompatActivity {
         }
     };
 
+    // 初始化界面，先显示本地缓存，再拉取最新数据
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -95,6 +97,7 @@ public class ProductDetailActivity extends AppCompatActivity {
         btnAddToCart.setOnClickListener(v -> addToCart());
     }
 
+    // 从MockAPI拉取单个商品详情，更新本地缓存
     private void loadProductDetail() {
         new Thread(() -> {
             try {
@@ -147,6 +150,7 @@ public class ProductDetailActivity extends AppCompatActivity {
         }).start();
     }
 
+    // 把商品信息填充到界面上
     private void displayProduct(Product product) {
         tvName.setText(product.getName());
         tvCategory.setText(product.getCategory());
@@ -158,6 +162,7 @@ public class ProductDetailActivity extends AppCompatActivity {
                 .into(ivImage);
     }
 
+    // 加入购物车：已有则数量+1，没有则新增一条
     private void addToCart() {
         if (currentProduct == null) {
             Toast.makeText(this, "商品信息加载中，请稍后再试", Toast.LENGTH_SHORT).show();

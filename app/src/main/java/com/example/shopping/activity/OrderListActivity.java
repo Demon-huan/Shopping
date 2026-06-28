@@ -44,6 +44,7 @@ public class OrderListActivity extends AppCompatActivity {
     private List<Order> orderList = new ArrayList<>();
     private OrderAdapter adapter;
 
+    // 加载完成后刷新订单列表，无订单时显示空状态
     private final Handler handler = new Handler(Looper.getMainLooper()) {
         @Override
         public void handleMessage(Message msg) {
@@ -60,6 +61,7 @@ public class OrderListActivity extends AppCompatActivity {
         }
     };
 
+    // 初始化界面，绑定订单列表和Toolbar返回
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -95,6 +97,7 @@ public class OrderListActivity extends AppCompatActivity {
         loadOrders();
     }
 
+    // 每次回到页面时重新加载订单并尝试同步待处理订单
     @Override
     protected void onResume() {
         super.onResume();
@@ -102,6 +105,7 @@ public class OrderListActivity extends AppCompatActivity {
         ((ShoppingApplication) getApplication()).syncPendingOrders();
     }
 
+    // 在线：从MockAPI拉取 → 同步到本地SQLite；离线：读本地缓存
     private void loadOrders() {
         new Thread(() -> {
             try {
@@ -132,13 +136,18 @@ public class OrderListActivity extends AppCompatActivity {
                     }
                 }
                 orderList = new ArrayList<>(orderMap.values());
+
+                // 在线时同步到本地 SQLite
+                dbHelper.syncOrdersFromRemote(userId, orderList);
             } catch (Exception e) {
+                // 离线或失败：从本地 SQLite 读取（上次同步的缓存）
                 orderList = dbHelper.getOrdersByUserId(userId);
             }
             handler.sendEmptyMessage(MSG_SUCCESS);
         }).start();
     }
 
+    // 同时删远端和本地，保持一致
     private void deleteOrder(Order order) {
         new Thread(() -> {
             try {

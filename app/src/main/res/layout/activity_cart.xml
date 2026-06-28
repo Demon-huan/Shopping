@@ -46,53 +46,68 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="16dp"
-        android:gravity="center_vertical">
+        android:orientation="vertical"
+        android:padding="12dp">
 
-        <CheckBox
-            android:id="@+id/cb_select_all"
-            android:layout_width="wrap_content"
+        <!-- 第一行：全选 + 合计金额 -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="全选"
-            android:textSize="14sp"
-            android:buttonTint="?attr/colorPrimary"
-            android:layout_marginEnd="12dp" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="8dp">
 
-        <TextView
-            android:layout_width="0dp"
+            <CheckBox
+                android:id="@+id/cb_select_all"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="全选"
+                android:textSize="14sp"
+                android:buttonTint="?attr/colorPrimary" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="end"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="?android:attr/textColorPrimary"
+                android:text="合计：" />
+
+            <TextView
+                android:id="@+id/tv_total_price"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:textColor="?attr/colorPrimary"
+                android:text="¥0.00" />
+        </LinearLayout>
+
+        <!-- 第二行：操作按钮 -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:textColor="?android:attr/textColorPrimary"
-            android:text="合计：" />
+            android:orientation="horizontal"
+            android:gravity="end">
 
-        <TextView
-            android:id="@+id/tv_total_price"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textSize="22sp"
-            android:textStyle="bold"
-            android:textColor="?attr/colorPrimary"
-            android:text="¥0.00"
-            android:layout_marginEnd="16dp" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_clear_cart"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:text="清空"
+                app:cornerRadius="8dp"
+                style="@style/Widget.Material3.Button.TonalButton" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_clear_cart"
-            android:layout_width="wrap_content"
-            android:layout_height="48dp"
-            android:text="清空"
-            app:cornerRadius="8dp"
-            style="@style/Widget.Material3.Button.TonalButton" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_purchase"
-            android:layout_width="wrap_content"
-            android:layout_height="48dp"
-            android:text="购买"
-            android:layout_marginStart="8dp"
-            app:cornerRadius="8dp" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_purchase"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:text="购买"
+                android:layout_marginStart="8dp"
+                app:cornerRadius="8dp" />
+        </LinearLayout>
 
     </LinearLayout>
 

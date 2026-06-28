@@ -56,6 +56,7 @@ public class CartActivity extends AppCompatActivity {
         updateTotalPrice();
     };
 
+    // 加载完成后刷新列表和合计
     private final Handler handler = new Handler(Looper.getMainLooper()) {
         @Override
         public void handleMessage(Message msg) {
@@ -67,10 +68,9 @@ public class CartActivity extends AppCompatActivity {
         }
     };
 
+    // 初始化界面：购物车列表、全选、清空、购买
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_cart);
 
         dbHelper = new DatabaseHelper(this);
         userId = getIntent().getIntExtra("user_id", -1);
@@ -146,11 +146,21 @@ public class CartActivity extends AppCompatActivity {
             btnPurchase.setEnabled(false);
             btnPurchase.setText("处理中...");
 
+            // 先建本地订单 → 再尝试上传MockAPI → 失败则缓存待重试
             new Thread(() -> {
                 try {
+                    // 先创建本地订单（状态"待同步"），获取本地 orderId
+                    final long localOrderId = dbHelper.createOrderOnly(
+                            userId, finalTotal, snapshot, timestamp, "待同步");
+
+                    // 删除已购商品从购物车
+                    for (CartItem item : snapshot) {
+                        dbHelper.deleteCartItem(item.getId());
+                    }
+
                     if (NetworkUtil.isNetworkAvailable(CartActivity.this)) {
                         try {
-                            // 先上传到 MockAPI
+                            // 上传到 MockAPI
                             for (CartItem item : snapshot) {
                                 JSONObject json = new JSONObject();
                                 json.put(ApiContract.KEY_ORDER_USER_ID, userId);
@@ -164,12 +174,8 @@ public class CartActivity extends AppCompatActivity {
                                 String url = ApiConfig.BASE_URL + ApiContract.ORDERS;
                                 HttpUtils.doPost(url, json.toString());
                             }
-
-                            // MockAPI上传成功 → 创建本地订单 + 删除已购商品
-                            dbHelper.createOrderOnly(userId, finalTotal, snapshot, timestamp);
-                            for (CartItem item : snapshot) {
-                                dbHelper.deleteCartItem(item.getId());
-                            }
+                            // 上传成功 → 更新订单状态
+                            dbHelper.updateOrderStatus((int) localOrderId, "已下单");
                             runOnUiThread(() -> {
                                 cartItems.removeAll(snapshot);
                                 adapter.clearSelection();
@@ -179,19 +185,33 @@ public class CartActivity extends AppCompatActivity {
                                 Toast.makeText(CartActivity.this, "下单成功", Toast.LENGTH_SHORT).show();
                             });
                         } catch (Exception e) {
-                            // MockAPI上传失败 → 缓存到待处理表
+                            // 上传失败 → 缓存到 pending_orders，本地订单保持"待同步"
                             android.util.Log.e("CartActivity", "MockAPI上传失败", e);
-                            String orderJson = buildPendingOrderJson(userId, finalTotal, snapshot, timestamp);
+                            String orderJson = buildPendingOrderJson(userId, finalTotal, snapshot, timestamp, localOrderId);
                             dbHelper.insertPendingOrder(userId, orderJson);
-                            runOnUiThread(() -> Toast.makeText(CartActivity.this,
-                                    "网络异常，订单已缓存，联网后自动上传", Toast.LENGTH_LONG).show());
+                            runOnUiThread(() -> {
+                                cartItems.removeAll(snapshot);
+                                adapter.clearSelection();
+                                adapter.setItems(cartItems);
+                                updateTotalPrice();
+                                updateEmptyState();
+                                Toast.makeText(CartActivity.this,
+                                        "网络异常，订单将在联网后自动同步", Toast.LENGTH_LONG).show();
+                            });
                         }
                     } else {
-                        // 无网络 → 缓存到待处理表
-                        String orderJson = buildPendingOrderJson(userId, finalTotal, snapshot, timestamp);
+                        // 无网络 → 缓存到 pending_orders，本地订单保持"待同步"
+                        String orderJson = buildPendingOrderJson(userId, finalTotal, snapshot, timestamp, localOrderId);
                         dbHelper.insertPendingOrder(userId, orderJson);
-                        runOnUiThread(() -> Toast.makeText(CartActivity.this,
-                                "无网络，订单已缓存，联网后自动上传", Toast.LENGTH_LONG).show());
+                        runOnUiThread(() -> {
+                            cartItems.removeAll(snapshot);
+                            adapter.clearSelection();
+                            adapter.setItems(cartItems);
+                            updateTotalPrice();
+                            updateEmptyState();
+                            Toast.makeText(CartActivity.this,
+                                    "无网络，订单将在联网后自动同步", Toast.LENGTH_LONG).show();
+                        });
                     }
                 } finally {
                     runOnUiThread(() -> {
@@ -206,13 +226,15 @@ public class CartActivity extends AppCompatActivity {
         loadCartItems();
     }
 
+    // 把订单信息序列化成JSON，等联网后重传
     private String buildPendingOrderJson(int userId, double totalPrice,
-                                          List<CartItem> items, String createdAt) {
+                                          List<CartItem> items, String createdAt, long orderId) {
         try {
             JSONObject json = new JSONObject();
             json.put("userId", userId);
             json.put("totalPrice", totalPrice);
             json.put("createdAt", createdAt);
+            json.put("orderId", orderId);
             JSONArray itemsArray = new JSONArray();
             for (CartItem item : items) {
                 JSONObject itemJson = new JSONObject();
@@ -230,6 +252,7 @@ public class CartActivity extends AppCompatActivity {
         }
     }
 
+    // 从SQLite加载当前用户的购物车商品
     private void loadCartItems() {
         new Thread(() -> {
             cartItems = dbHelper.getCartItemsByUserId(userId);
@@ -237,6 +260,7 @@ public class CartActivity extends AppCompatActivity {
         }).start();
     }
 
+    // 更新商品数量，最少为1
     private void onQuantityChanged(CartItem item, int newQuantity) {
         if (newQuantity < 1) newQuantity = 1;
         dbHelper.updateCartItemQuantity(item.getId(), newQuantity);
@@ -245,6 +269,7 @@ public class CartActivity extends AppCompatActivity {
         updateTotalPrice();
     }
 
+    // 删除单个购物车商品
     private void onItemDeleted(CartItem item) {
         dbHelper.deleteCartItem(item.getId());
         cartItems.remove(item);
@@ -254,6 +279,7 @@ public class CartActivity extends AppCompatActivity {
         Toast.makeText(this, "已删除", Toast.LENGTH_SHORT).show();
     }
 
+    // 只计算选中商品的总金额
     private void updateTotalPrice() {
         double total = 0;
         for (CartItem item : cartItems) {
@@ -264,6 +290,7 @@ public class CartActivity extends AppCompatActivity {
         tvTotalPrice.setText("¥" + String.format("%.2f", total));
     }
 
+    // 购物车为空时显示空状态提示
     private void updateEmptyState() {
         if (cartItems.isEmpty()) {
             recyclerView.setVisibility(View.GONE);

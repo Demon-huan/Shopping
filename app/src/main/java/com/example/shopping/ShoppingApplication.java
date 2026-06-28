@@ -9,7 +9,6 @@ import android.net.ConnectivityManager;
 import android.util.Log;
 
 import com.example.shopping.db.DatabaseHelper;
-import com.example.shopping.model.CartItem;
 import com.example.shopping.model.PendingOrder;
 import com.example.shopping.network.ApiConfig;
 import com.example.shopping.network.ApiContract;
@@ -19,7 +18,6 @@ import com.example.shopping.util.NetworkUtil;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class ShoppingApplication extends Application {
@@ -29,6 +27,7 @@ public class ShoppingApplication extends Application {
     private DatabaseHelper dbHelper;
     private volatile boolean isSyncing = false;
 
+    // Application启动时初始化数据库并注册网络监听
     @Override
     public void onCreate() {
         super.onCreate();
@@ -36,10 +35,7 @@ public class ShoppingApplication extends Application {
         registerNetworkReceiver();
     }
 
-    public DatabaseHelper getDbHelper() {
-        return dbHelper;
-    }
-
+    // 监听网络变化，联网时自动触发订单同步
     private void registerNetworkReceiver() {
         BroadcastReceiver receiver = new BroadcastReceiver() {
             @Override
@@ -53,6 +49,7 @@ public class ShoppingApplication extends Application {
         registerReceiver(receiver, filter);
     }
 
+    // 联网后自动重试之前没上传成功的订单
     public void syncPendingOrders() {
         if (isSyncing) return;
         isSyncing = true;
@@ -73,15 +70,16 @@ public class ShoppingApplication extends Application {
         }).start();
     }
 
+    // 单条待处理订单：上传MockAPI → 更新本地状态
     private void uploadAndFinalizePendingOrder(PendingOrder po) throws Exception {
         JSONObject json = new JSONObject(po.getOrderJson());
         int userId = json.getInt("userId");
         double totalPrice = json.getDouble("totalPrice");
         String createdAt = json.getString("createdAt");
+        int localOrderId = json.getInt("orderId");
         JSONArray itemsArray = json.getJSONArray("items");
 
         // 上传每个商品项到 MockAPI
-        List<CartItem> cartItems = new ArrayList<>();
         for (int i = 0; i < itemsArray.length(); i++) {
             JSONObject itemJson = itemsArray.getJSONObject(i);
 
@@ -97,19 +95,11 @@ public class ShoppingApplication extends Application {
 
             String url = ApiConfig.BASE_URL + ApiContract.ORDERS;
             HttpUtils.doPost(url, postJson.toString());
-
-            CartItem ci = new CartItem();
-            ci.setProductId(itemJson.getInt(ApiContract.KEY_PRODUCT_ID));
-            ci.setName(itemJson.getString(ApiContract.KEY_NAME));
-            ci.setPrice(itemJson.getDouble(ApiContract.KEY_PRICE));
-            ci.setQuantity(itemJson.getInt(ApiContract.KEY_QUANTITY));
-            cartItems.add(ci);
         }
 
-        // 上传成功 → 创建本地订单 + 清空购物车 + 删除待处理记录
-        dbHelper.createOrderOnly(userId, totalPrice, cartItems, createdAt);
-        dbHelper.clearCart(userId);
+        // 上传成功 → 更新本地订单状态 + 删除待处理记录
+        dbHelper.updateOrderStatus(localOrderId, "已下单");
         dbHelper.deletePendingOrder(po.getId());
-        Log.d(TAG, "待处理订单同步成功, id=" + po.getId());
+        Log.d(TAG, "待处理订单同步成功, localOrderId=" + localOrderId);
     }
 }

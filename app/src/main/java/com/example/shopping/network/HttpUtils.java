@@ -12,6 +12,7 @@ public class HttpUtils {
     private static final int CONNECT_TIMEOUT = 15000;
     private static final int READ_TIMEOUT = 15000;
 
+    // GET 请求，返回响应体字符串
     public static String doGet(String urlStr) throws Exception {
         HttpURLConnection conn = null;
         try {
@@ -32,6 +33,7 @@ public class HttpUtils {
         }
     }
 
+    // POST 请求，发送JSON数据，返回响应体字符串
     public static String doPost(String urlStr, String jsonBody) throws Exception {
         HttpURLConnection conn = null;
         try {
@@ -58,6 +60,7 @@ public class HttpUtils {
         }
     }
 
+    // DELETE 请求，删除指定资源
     public static String doDelete(String urlStr) throws Exception {
         HttpURLConnection conn = null;
         try {
@@ -78,6 +81,7 @@ public class HttpUtils {
         }
     }
 
+    // 读取输入流，拼接成完整字符串
     private static String readStream(InputStream is) throws Exception {
         BufferedReader br = new BufferedReader(new InputStreamReader(is, "UTF-8"));
         StringBuilder sb = new StringBuilder();

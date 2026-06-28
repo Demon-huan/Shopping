@@ -3,6 +3,7 @@ package com.example.shopping.activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -14,19 +15,19 @@ import com.example.shopping.util.SessionManager;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.google.android.material.textfield.TextInputEditText;
-import com.google.android.material.textview.MaterialTextView;
 
 public class LoginActivity extends AppCompatActivity {
 
     private TextInputEditText etUsername;
     private TextInputEditText etPassword;
     private MaterialButton btnLogin;
-    private MaterialTextView tvGoRegister;
+    private TextView tvGoRegister;
     private LinearProgressIndicator progressBar;
 
     private SessionManager sessionManager;
     private DatabaseHelper dbHelper;
 
+    // 初始化界面，绑定登录按钮和注册跳转
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -59,6 +60,7 @@ public class LoginActivity extends AppCompatActivity {
         });
     }
 
+    // 后台查询数据库验证账号密码，成功则保存登录状态并跳转商品列表
     private void performLogin(String username, String password) {
         new Thread(() -> {
             User user = dbHelper.queryUserByUsernameAndPassword(username, password);

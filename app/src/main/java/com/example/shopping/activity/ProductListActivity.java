@@ -48,6 +48,7 @@ public class ProductListActivity extends AppCompatActivity {
     private DatabaseHelper dbHelper;
     private int userId;
 
+    // 处理后台线程返回的结果，刷新商品列表
     private final Handler handler = new Handler(Looper.getMainLooper()) {
         @Override
         public void handleMessage(Message msg) {
@@ -64,10 +65,9 @@ public class ProductListActivity extends AppCompatActivity {
         }
     };
 
+    // 初始化界面：RecyclerView、Toolbar、加载商品
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_product_list);
 
         sessionManager = new SessionManager(this);
         dbHelper = new DatabaseHelper(this);
@@ -92,18 +92,21 @@ public class ProductListActivity extends AppCompatActivity {
         loadProducts();
     }
 
+    // 淡入显示加载遮罩
     private void showLoading() {
         loadingOverlay.setAlpha(0f);
         loadingOverlay.setVisibility(View.VISIBLE);
         loadingOverlay.animate().alpha(1f).setDuration(300).start();
     }
 
+    // 淡出隐藏加载遮罩
     private void hideLoading() {
         if (loadingOverlay.getVisibility() != View.VISIBLE) return;
         loadingOverlay.animate().alpha(0f).setDuration(300)
                 .withEndAction(() -> loadingOverlay.setVisibility(View.GONE)).start();
     }
 
+    // 在线从MockAPI拉取商品并缓存到SQLite，离线读本地缓存
     private void loadProducts() {
         new Thread(() -> {
             try {
@@ -153,6 +156,7 @@ public class ProductListActivity extends AppCompatActivity {
         }).start();
     }
 
+    // 把JSONObject转成Product对象，兼容MockAPI的字符串id
     private Product parseProduct(JSONObject obj) throws Exception {
         Product p = new Product();
         // MockAPI 的 id 可能是字符串，兼容处理
@@ -171,12 +175,14 @@ public class ProductListActivity extends AppCompatActivity {
         return p;
     }
 
+    // 加载Toolbar右侧菜单（购物车、订单、退出）
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.toolbar_menu, menu);
         return true;
     }
 
+    // 处理菜单点击：购物车、退出登录、订单列表
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         int id = item.getItemId();
