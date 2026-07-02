@@ -68,6 +68,8 @@ public class ProductListActivity extends AppCompatActivity {
     // 初始化界面：RecyclerView、Toolbar、加载商品
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_product_list);
 
         sessionManager = new SessionManager(this);
         dbHelper = new DatabaseHelper(this);

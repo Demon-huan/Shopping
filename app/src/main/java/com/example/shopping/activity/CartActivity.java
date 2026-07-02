@@ -71,6 +71,8 @@ public class CartActivity extends AppCompatActivity {
     // 初始化界面：购物车列表、全选、清空、购买
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_cart);
 
         dbHelper = new DatabaseHelper(this);
         userId = getIntent().getIntExtra("user_id", -1);
